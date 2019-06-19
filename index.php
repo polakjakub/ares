@@ -1,6 +1,8 @@
 <?php
 error_reporting(E_ALL); ini_set('display_errors', 1);
 
+	define('CACHE_DIR', realpath(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'cache'));
+	
 /**
  * Class AresXMLElement
  *
@@ -59,15 +61,21 @@ class AresXMLElement extends SimpleXMLElement
  *
  * @throws Exception
  */
-function getData($ico)
+function getData($ico, $cacheTTL = 86400)
 {
 	validateICO(validateICO($ico));
 	if (!validateICO($ico)) {
 		throw new Exception("`" . htmlspecialchars($ico) . "` není správné IČO.");
 	}
 	
-	$xml_string = file_get_contents('https://wwwinfo.mfcr.cz/cgi-bin/ares/darv_std.cgi?ico=' . $ico);
+	$cache_filename = CACHE_DIR . DIRECTORY_SEPARATOR . $ico . '.xml';
 	
+	if (is_file($cache_filename) && filemtime($cache_filename) + $cacheTTL > time()) {
+		$xml_string = file_get_contents($cache_filename);
+	} else {
+		$xml_string = file_get_contents('https://wwwinfo.mfcr.cz/cgi-bin/ares/darv_std.cgi?ico=' . $ico);
+		file_put_contents($cache_filename, $xml_string);
+	}
 	$xml = simplexml_load_string($xml_string, 'AresXMLElement');
 	
 	if (!$xml) {
